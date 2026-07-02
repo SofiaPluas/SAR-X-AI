@@ -6,7 +6,9 @@ from database import engine, Base, SessionLocal
 from models import Detection
 
 
-# Crear tablas
+# REPARACIÓN INICIAL DE BASE DE DATOS
+# Después de que funcione se cambia por solo create_all
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 
@@ -15,7 +17,7 @@ app = FastAPI(
 )
 
 
-# Permitir conexión desde React/Vite
+# Permitir conexión desde React / Flutter
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,6 +26,10 @@ app.add_middleware(
 )
 
 
+
+# -----------------------------
+# MODELOS DE DATOS
+# -----------------------------
 
 class DetectionData(BaseModel):
 
@@ -35,6 +41,18 @@ class DetectionData(BaseModel):
 
 
 
+class ConfirmData(BaseModel):
+
+    id: int
+
+    confirmed_by: str
+
+
+
+# -----------------------------
+# HOME
+# -----------------------------
+
 @app.get("/")
 def home():
 
@@ -44,6 +62,10 @@ def home():
     }
 
 
+
+# -----------------------------
+# CREAR DETECCION
+# -----------------------------
 
 @app.post("/detection")
 def create_detection(data: DetectionData):
@@ -81,6 +103,10 @@ def create_detection(data: DetectionData):
 
 
 
+# -----------------------------
+# VER TODAS LAS DETECCIONES
+# -----------------------------
+
 @app.get("/detections")
 def get_detections():
 
@@ -93,25 +119,22 @@ def get_detections():
 
     return detections
 
-from pydantic import BaseModel
 
 
-class ConfirmData(BaseModel):
-
-    id: int
-
-    confirmed_by: str
-
-
+# -----------------------------
+# CONFIRMAR ALERTA
+# -----------------------------
 
 @app.post("/confirm")
 def confirm(data: ConfirmData):
 
     db = SessionLocal()
 
+
     detection = db.query(Detection).filter(
         Detection.id == data.id
     ).first()
+
 
 
     if detection is None:
@@ -121,6 +144,7 @@ def confirm(data: ConfirmData):
         return {
             "error": "Detection not found"
         }
+
 
 
     detection.status = "confirmed"
@@ -128,25 +152,36 @@ def confirm(data: ConfirmData):
     detection.confirmed_by = data.confirmed_by
 
 
+
     db.commit()
 
     db.close()
 
 
+
     return {
+
         "message": "Detection confirmed"
+
     }
 
 
+
+# -----------------------------
+# FALSA ALARMA
+# -----------------------------
 
 @app.post("/false-alarm")
 def false_alarm(data: ConfirmData):
 
     db = SessionLocal()
 
+
+
     detection = db.query(Detection).filter(
         Detection.id == data.id
     ).first()
+
 
 
     if detection is None:
@@ -154,8 +189,11 @@ def false_alarm(data: ConfirmData):
         db.close()
 
         return {
+
             "error": "Detection not found"
+
         }
+
 
 
     detection.status = "false_alarm"
@@ -163,46 +201,67 @@ def false_alarm(data: ConfirmData):
     detection.confirmed_by = data.confirmed_by
 
 
+
     db.commit()
 
     db.close()
 
 
+
     return {
+
         "message": "False alarm saved"
+
     }
 
 
+
+# -----------------------------
+# ALERTAS PENDIENTES
+# -----------------------------
 
 @app.get("/alerts")
 def alerts():
 
     db = SessionLocal()
 
+
+
     alerts = db.query(Detection).filter(
         Detection.status == "pending"
     ).all()
 
 
+
     db.close()
+
 
 
     return alerts
 
 
 
+
+# -----------------------------
+# MISIONES CONFIRMADAS
+# -----------------------------
+
 @app.get("/missions")
 def missions():
 
     db = SessionLocal()
+
+
 
     missions = db.query(Detection).filter(
         Detection.status == "confirmed"
     ).all()
 
 
+
     db.close()
 
 
+
     return missions
-    
+
