@@ -8,7 +8,6 @@ from models import Detection
 
 # REPARACIÓN INICIAL DE BASE DE DATOS
 # Después de que funcione se cambia por solo create_all
-Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 
