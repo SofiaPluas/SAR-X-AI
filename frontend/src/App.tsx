@@ -1,13 +1,24 @@
 import MapView from "./components/MapView";
 
 
-function App(){
+function App() {
 
-return (
+  return (
 
-<MapView/>
+    <div>
 
-);
+      <h1>
+        SAR-X AI
+        Centro de Mando
+      </h1>
+
+
+      <MapView />
+
+
+    </div>
+
+  );
 
 }
 
