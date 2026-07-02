@@ -1,37 +1,12 @@
-import { useEffect, useState } from "react";
 
-interface Detection {
-  id: number;
-  latitude: number;
-  longitude: number;
-  probability: number;
-  status: string;
+import { Detection } from "../types";
+
+interface Props {
+  alerts: Detection[];
+  onSelectAlert: (alert: Detection) => void;
 }
 
-export default function AlertPanel() {
-
-  const [alerts, setAlerts] = useState<Detection[]>([]);
-
-  async function loadAlerts() {
-    try {
-      const response = await fetch(
-        "https://sar-x-ai.onrender.com/detections"
-      );
-
-      const data = await response.json();
-
-console.log("Alertas recibidas:", data);
-
-setAlerts(data);
-
-    } catch (error) {
-      console.error("Error cargando alertas:", error);
-    }
-  }
-
-  useEffect(() => {
-    loadAlerts();
-  }, []);
+export default function AlertPanel({ alerts, onSelectAlert }: Props) {
 
   return (
     <div
@@ -52,22 +27,22 @@ setAlerts(data);
         alerts.map((alert) => (
           <div
             key={alert.id}
+            onClick={() => onSelectAlert(alert)}
             style={{
               border: "1px solid #ddd",
               borderRadius: "8px",
               padding: "10px",
-              marginBottom: "10px"
+              marginBottom: "10px",
+              cursor: "pointer"
             }}
           >
             <strong>Alerta #{alert.id}</strong>
 
             <p>Confianza: {alert.probability}%</p>
-
             <p>Estado: {alert.status}</p>
 
             <p>
-              {alert.latitude},
-              {alert.longitude}
+              {alert.latitude}, {alert.longitude}
             </p>
           </div>
         ))
@@ -75,5 +50,4 @@ setAlerts(data);
 
     </div>
   );
-
 }
