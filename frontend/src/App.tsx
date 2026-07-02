@@ -1,16 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import MapView from "./components/MapView";
 import AlertPanel from "./components/AlertPanel";
+import { Detection } from "./types";
 
-interface Detection {
-  id: number;
-  latitude: number;
-  longitude: number;
-  probability: number;
-  status: string;
-}
-
-function App() {
+export default function App() {
   const [alerts, setAlerts] = useState<Detection[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<Detection | null>(null);
 
@@ -20,7 +13,7 @@ function App() {
     fetch("https://sar-x-ai.onrender.com/detections")
       .then((res) => res.json())
       .then(setAlerts)
-      .catch((err) => console.error(err));
+      .catch(console.error);
   }, []);
 
   const handleSelectAlert = (alert: Detection) => {
@@ -55,5 +48,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
