@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -6,84 +6,58 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 export default function MapView() {
 
+  const mapContainer = useRef<HTMLDivElement | null>(null);
+
 
   useEffect(() => {
+
+    if (!mapContainer.current) return;
 
 
     const map = new maplibregl.Map({
 
-      container: "map",
+      container: mapContainer.current,
 
-      style: "https://demotiles.maplibre.org/style.json",
+      style:
+      "https://demotiles.maplibre.org/style.json",
 
       center: [
-
-        -78.46,
-
-        -0.18
-
+        -78.4678,
+        -0.1807
       ],
 
-      zoom: 14
+      zoom: 13
 
     });
 
 
 
-    fetch("http://127.0.0.1:8000/detections")
+    new maplibregl.Marker({
 
-      .then(res => res.json())
+      color: "red"
 
-      .then(data => {
+    })
 
+    .setLngLat([
+      -78.4678,
+      -0.1807
+    ])
 
-        data.forEach((d: any) => {
+    .setPopup(
 
+      new maplibregl.Popup()
 
-          new maplibregl.Marker({
+      .setHTML(
+        `
+        🚨 Posible sobreviviente
+        <br>
+        Confianza: 94%
+        `
+      )
 
-            color: "red"
+    )
 
-          })
-
-
-          .setLngLat([
-
-            d.longitude,
-
-            d.latitude
-
-          ])
-
-
-          .setPopup(
-
-            new maplibregl.Popup()
-
-              .setHTML(`
-
-                <h3>🚨 Posible sobreviviente</h3>
-
-                <p>
-
-                Probabilidad:
-
-                ${d.probability}%
-
-                </p>
-
-              `)
-
-          )
-
-
-          .addTo(map);
-
-
-        });
-
-
-      });
+    .addTo(map);
 
 
 
@@ -98,19 +72,18 @@ export default function MapView() {
 
     <div
 
-      id="map"
+      ref={mapContainer}
 
       style={{
 
-        width: "100%",
+        height:"500px",
 
-        height: "100vh"
+        width:"100%"
 
       }}
 
     />
 
   );
-
 
 }
