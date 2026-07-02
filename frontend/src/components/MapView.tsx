@@ -1,89 +1,52 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
-
 import "maplibre-gl/dist/maplibre-gl.css";
-
 
 export default function MapView() {
 
-  const mapContainer = useRef<HTMLDivElement | null>(null);
-
+  const mapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
 
-    if (!mapContainer.current) return;
-
+    if (!mapRef.current) return;
 
     const map = new maplibregl.Map({
-
-      container: mapContainer.current,
-
-      style:
-      "https://demotiles.maplibre.org/style.json",
-
-      center: [
-        -78.4678,
-        -0.1807
-      ],
-
-      zoom: 13
-
+      container: mapRef.current,
+      style: "https://demotiles.maplibre.org/style.json",
+      center: [-78.4678, -0.1807],
+      zoom: 12
     });
 
+    // 🔥 CARGAR ALERTAS DESDE TU API
+    fetch("https://sar-x-ai.onrender.com/detections")
+      .then(res => res.json())
+      .then(data => {
 
+        data.forEach((d: any) => {
 
-    new maplibregl.Marker({
+          new maplibregl.Marker({ color: "red" })
+            .setLngLat([d.longitude, d.latitude])
+            .setPopup(
+              new maplibregl.Popup().setHTML(`
+                🚨 Alerta SAR-X AI<br/>
+                Probabilidad: ${d.probability}%<br/>
+                Estado: ${d.status ?? "pending"}
+              `)
+            )
+            .addTo(map);
 
-      color: "red"
+        });
 
-    })
-
-    .setLngLat([
-      -78.4678,
-      -0.1807
-    ])
-
-    .setPopup(
-
-      new maplibregl.Popup()
-
-      .setHTML(
-        `
-        🚨 Posible sobreviviente
-        <br>
-        Confianza: 94%
-        `
-      )
-
-    )
-
-    .addTo(map);
-
-
+      });
 
     return () => map.remove();
 
-
   }, []);
 
-
-
   return (
-
     <div
-
-      ref={mapContainer}
-
-      style={{
-
-        height:"500px",
-
-        width:"100%"
-
-      }}
-
+      ref={mapRef}
+      style={{ height: "500px", width: "100%" }}
     />
-
   );
-
 }
