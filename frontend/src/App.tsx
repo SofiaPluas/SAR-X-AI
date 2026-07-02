@@ -1,5 +1,5 @@
 import MapView from "./components/MapView";
-
+import AlertPanel from "./components/AlertPanel";
 
 function App() {
 
@@ -7,20 +7,36 @@ function App() {
 
     <div>
 
-      <h1>
-        SAR-X AI
-        Centro de Mando
+      <h1
+        style={{
+          textAlign: "center"
+        }}
+      >
+        SAR-X AI - Centro de Mando
       </h1>
 
+      <div
+        style={{
+          display: "flex"
+        }}
+      >
 
-      <MapView />
+        <div
+          style={{
+            flex: 1
+          }}
+        >
+          <MapView />
+        </div>
 
+        <AlertPanel />
+
+      </div>
 
     </div>
 
   );
 
 }
-
 
 export default App;
