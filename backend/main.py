@@ -92,3 +92,117 @@ def get_detections():
 
 
     return detections
+
+from pydantic import BaseModel
+
+
+class ConfirmData(BaseModel):
+
+    id: int
+
+    confirmed_by: str
+
+
+
+@app.post("/confirm")
+def confirm(data: ConfirmData):
+
+    db = SessionLocal()
+
+    detection = db.query(Detection).filter(
+        Detection.id == data.id
+    ).first()
+
+
+    if detection is None:
+
+        db.close()
+
+        return {
+            "error": "Detection not found"
+        }
+
+
+    detection.status = "confirmed"
+
+    detection.confirmed_by = data.confirmed_by
+
+
+    db.commit()
+
+    db.close()
+
+
+    return {
+        "message": "Detection confirmed"
+    }
+
+
+
+@app.post("/false-alarm")
+def false_alarm(data: ConfirmData):
+
+    db = SessionLocal()
+
+    detection = db.query(Detection).filter(
+        Detection.id == data.id
+    ).first()
+
+
+    if detection is None:
+
+        db.close()
+
+        return {
+            "error": "Detection not found"
+        }
+
+
+    detection.status = "false_alarm"
+
+    detection.confirmed_by = data.confirmed_by
+
+
+    db.commit()
+
+    db.close()
+
+
+    return {
+        "message": "False alarm saved"
+    }
+
+
+
+@app.get("/alerts")
+def alerts():
+
+    db = SessionLocal()
+
+    alerts = db.query(Detection).filter(
+        Detection.status == "pending"
+    ).all()
+
+
+    db.close()
+
+
+    return alerts
+
+
+
+@app.get("/missions")
+def missions():
+
+    db = SessionLocal()
+
+    missions = db.query(Detection).filter(
+        Detection.status == "confirmed"
+    ).all()
+
+
+    db.close()
+
+
+    return missions
+    
