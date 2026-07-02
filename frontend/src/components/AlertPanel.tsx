@@ -20,7 +20,9 @@ export default function AlertPanel() {
 
       const data = await response.json();
 
-      setAlerts(data);
+console.log("Alertas recibidas:", data);
+
+setAlerts(data);
 
     } catch (error) {
       console.error("Error cargando alertas:", error);
