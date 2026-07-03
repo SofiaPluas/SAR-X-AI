@@ -9,6 +9,9 @@ export default function App() {
 
   const mapRef = useRef<any>(null);
 
+  // -----------------------------
+  // CARGA INICIAL (DB)
+  // -----------------------------
   useEffect(() => {
     fetch("https://sar-x-ai.onrender.com/detections")
       .then((res) => res.json())
@@ -16,6 +19,35 @@ export default function App() {
       .catch(console.error);
   }, []);
 
+  // -----------------------------
+  // TIEMPO REAL (YOLO)
+  // -----------------------------
+  useEffect(() => {
+    const ws = new WebSocket("ws://localhost:8000/ws/survivors");
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      setAlerts((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          latitude: data.latitude,
+          longitude: data.longitude,
+          probability: data.score,
+          status: data.status,
+        },
+      ]);
+    };
+
+    ws.onerror = (err) => console.error("WebSocket error:", err);
+
+    return () => ws.close();
+  }, []);
+
+  // -----------------------------
+  // SELECCIÓN DE ALERTA
+  // -----------------------------
   const handleSelectAlert = (alert: Detection) => {
     setSelectedAlert(alert);
 
