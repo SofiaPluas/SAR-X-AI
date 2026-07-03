@@ -15,32 +15,46 @@ export default function App() {
   useEffect(() => {
     fetch("https://sar-x-ai.onrender.com/detections")
       .then((res) => res.json())
-      .then(setAlerts)
+      .then((data) => setAlerts(Array.isArray(data) ? data : []))
       .catch(console.error);
   }, []);
 
   // -----------------------------
-  // TIEMPO REAL (YOLO)
+  // TIEMPO REAL (YOLO WEBSOCKET)
   // -----------------------------
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws/survivors");
+    const ws = new WebSocket("ws://127.0.0.1:8000/ws/yolo");
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-
-      setAlerts((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          latitude: data.latitude,
-          longitude: data.longitude,
-          probability: data.score,
-          status: data.status,
-        },
-      ]);
+    ws.onopen = () => {
+      console.log("🟢 WebSocket conectado");
     };
 
-    ws.onerror = (err) => console.error("WebSocket error:", err);
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        setAlerts((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            latitude: data.latitude ?? -0.18,
+            longitude: data.longitude ?? -78.55,
+            probability: data.survivor_score ?? data.score ?? 0,
+            status: data.status ?? "pending",
+          },
+        ]);
+      } catch (err) {
+        console.error("Error parsing WS:", err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err);
+    };
+
+    ws.onclose = () => {
+      console.log("🔴 WebSocket cerrado");
+    };
 
     return () => ws.close();
   }, []);
