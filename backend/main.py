@@ -1,17 +1,20 @@
-
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+import cv2
 
 from database import engine, Base, SessionLocal
 from models import Detection
+from ai.yolo_realtime import analyze_frame
 
-# Crear tablas
+
+# ---------------- INIT DB ----------------
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="SAR-X AI")
 
-# CORS (React / Flutter)
+# ---------------- CORS ----------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,7 +23,6 @@ app.add_middleware(
 )
 
 # ---------------- MODELOS ----------------
-
 class DetectionData(BaseModel):
     latitude: float
     longitude: float
@@ -44,14 +46,12 @@ class DetectionOut(BaseModel):
 
 
 # ---------------- HOME ----------------
-
 @app.get("/")
 def home():
     return {"system": "SAR-X AI", "status": "online"}
 
 
-# ---------------- CREAR DETECCION ----------------
-
+# ---------------- CREAR DETECCIÓN ----------------
 @app.post("/detection")
 def create_detection(data: DetectionData):
     db = SessionLocal()
@@ -78,7 +78,6 @@ def create_detection(data: DetectionData):
 
 
 # ---------------- VER DETECCIONES ----------------
-
 @app.get("/detections", response_model=list[DetectionOut])
 def get_detections():
     db = SessionLocal()
@@ -88,7 +87,6 @@ def get_detections():
 
 
 # ---------------- CONFIRMAR ----------------
-
 @app.post("/confirm")
 def confirm(data: ConfirmData):
     db = SessionLocal()
@@ -109,7 +107,6 @@ def confirm(data: ConfirmData):
 
 
 # ---------------- FALSA ALARMA ----------------
-
 @app.post("/false-alarm")
 def false_alarm(data: ConfirmData):
     db = SessionLocal()
@@ -129,21 +126,32 @@ def false_alarm(data: ConfirmData):
     return {"message": "False alarm saved"}
 
 
-# ---------------- ALERTAS PENDIENTES ----------------
+# ---------------- WEBSOCKET YOLO EN TIEMPO REAL ----------------
+@app.websocket("/ws/yolo")
+async def yolo_stream(websocket: WebSocket):
+    await websocket.accept()
 
-@app.get("/alerts")
-def alerts():
-    db = SessionLocal()
-    data = db.query(Detection).filter(Detection.status == "pending").all()
-    db.close()
-    return data
+    cap = cv2.VideoCapture(0)
 
+    try:
+        while True:
+            ret, frame = cap.read()
 
-# ---------------- MISIONES ----------------
+            if not ret:
+                break
 
-@app.get("/missions")
-def missions():
-    db = SessionLocal()
-    data = db.query(Detection).filter(Detection.status == "confirmed").all()
-    db.close()
-    return data
+            people = analyze_frame(frame)
+
+            score = min(people * 0.4, 1.0)
+
+            await websocket.send_json({
+                "people_detected": people,
+                "survivor_score": score,
+                "status": "critical" if score > 0.7 else "low"
+            })
+
+    except Exception as e:
+        print("ERROR:", e)
+
+    finally:
+        cap.release()
