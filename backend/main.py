@@ -1,7 +1,9 @@
+
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import asyncio
 import cv2
 
 from database import engine, Base, SessionLocal
@@ -14,6 +16,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="SAR-X AI")
 
+
 # ---------------- CORS ----------------
 app.add_middleware(
     CORSMiddleware,
@@ -21,6 +24,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ---------------- MODELOS ----------------
 class DetectionData(BaseModel):
@@ -140,15 +144,21 @@ async def yolo_stream(websocket: WebSocket):
             if not ret:
                 break
 
+            # 🧠 YOLO detection
             people = analyze_frame(frame)
 
+            # 📊 score de supervivencia
             score = min(people * 0.4, 1.0)
 
+            # 📡 enviar al frontend
             await websocket.send_json({
                 "people_detected": people,
                 "survivor_score": score,
                 "status": "critical" if score > 0.7 else "low"
             })
+
+            # 🔥 evitar saturar CPU
+            await asyncio.sleep(0.2)
 
     except Exception as e:
         print("ERROR:", e)
