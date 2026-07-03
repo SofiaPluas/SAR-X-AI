@@ -21,8 +21,8 @@ interface MapViewProps {
 }
 
 const MapView = forwardRef<maplibregl.Map | null, MapViewProps>(
-  ({ alerts }, ref) => {
-    const mapContainer = useRef<HTMLDivElement | null>(null);
+  ({ alerts, selectedAlert }, ref) => {
+    const mapContainer = useRef<HTMLDivElement>(null);
     const mapInstance = useRef<maplibregl.Map | null>(null);
     const markers = useRef<maplibregl.Marker[]>([]);
 
@@ -49,29 +49,53 @@ const MapView = forwardRef<maplibregl.Map | null, MapViewProps>(
     // Exponer el mapa al componente padre
     useImperativeHandle(ref, () => mapInstance.current);
 
-    // Dibujar marcadores cada vez que cambien las alertas
+    // Dibujar marcadores
     useEffect(() => {
       if (!mapInstance.current) return;
 
-      // Borrar marcadores anteriores
-      markers.current.forEach((m) => m.remove());
+      markers.current.forEach((marker) => marker.remove());
       markers.current = [];
 
-      alerts.forEach((d) => {
-        const marker = new maplibregl.Marker({ color: "red" })
-          .setLngLat([d.longitude, d.latitude])
-          .setPopup(
-            new maplibregl.Popup().setHTML(`
-              <b>🚨 Alerta SAR-X AI</b><br/>
-              Probabilidad: ${d.probability}%<br/>
-              Estado: ${d.status}
-            `)
-          )
+      alerts.forEach((alert) => {
+        const popup = new maplibregl.Popup({ offset: 25 }).setHTML(`
+          <b>🚨 Alerta SAR-X AI</b><br/>
+          <b>ID:</b> ${alert.id}<br/>
+          <b>Confianza:</b> ${alert.probability}%<br/>
+          <b>Estado:</b> ${alert.status}
+        `);
+
+        const marker = new maplibregl.Marker({
+          color: "red",
+        })
+          .setLngLat([alert.longitude, alert.latitude])
+          .setPopup(popup)
           .addTo(mapInstance.current!);
 
         markers.current.push(marker);
       });
     }, [alerts]);
+
+    // Centrar el mapa cuando se selecciona una alerta
+    useEffect(() => {
+      if (!mapInstance.current || !selectedAlert) return;
+
+      mapInstance.current.flyTo({
+        center: [selectedAlert.longitude, selectedAlert.latitude],
+        zoom: 15,
+        essential: true,
+      });
+
+      markers.current.forEach((marker) => {
+        const lngLat = marker.getLngLat();
+
+        if (
+          lngLat.lng === selectedAlert.longitude &&
+          lngLat.lat === selectedAlert.latitude
+        ) {
+          marker.togglePopup();
+        }
+      });
+    }, [selectedAlert]);
 
     return (
       <div
@@ -84,5 +108,7 @@ const MapView = forwardRef<maplibregl.Map | null, MapViewProps>(
     );
   }
 );
+
+MapView.displayName = "MapView";
 
 export default MapView;
