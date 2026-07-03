@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -5,18 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base, SessionLocal
 from models import Detection
 
-
-# REPARACIÓN INICIAL DE BASE DE DATOS
-# Después de que funcione se cambia por solo create_all
+# Crear tablas
 Base.metadata.create_all(bind=engine)
 
+app = FastAPI(title="SAR-X AI")
 
-app = FastAPI(
-    title="SAR-X AI"
-)
-
-
-# Permitir conexión desde React / Flutter
+# CORS (React / Flutter)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,243 +19,131 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-
-# -----------------------------
-# MODELOS DE DATOS
-# -----------------------------
+# ---------------- MODELOS ----------------
 
 class DetectionData(BaseModel):
-
     latitude: float
-
     longitude: float
-
     probability: float
 
 
-
 class ConfirmData(BaseModel):
-
     id: int
-
     confirmed_by: str
 
 
+class DetectionOut(BaseModel):
+    id: int
+    latitude: float
+    longitude: float
+    probability: float
+    status: str
 
-# -----------------------------
-# HOME
-# -----------------------------
+    class Config:
+        orm_mode = True
+
+
+# ---------------- HOME ----------------
 
 @app.get("/")
 def home():
-
-    return {
-        "system": "SAR-X AI",
-        "status": "online"
-    }
+    return {"system": "SAR-X AI", "status": "online"}
 
 
-
-# -----------------------------
-# CREAR DETECCION
-# -----------------------------
+# ---------------- CREAR DETECCION ----------------
 
 @app.post("/detection")
 def create_detection(data: DetectionData):
-
     db = SessionLocal()
 
-
     detection = Detection(
-
         latitude=data.latitude,
-
         longitude=data.longitude,
-
-        probability=data.probability
-
+        probability=data.probability,
+        status="pending"
     )
 
-
     db.add(detection)
-
     db.commit()
-
     db.refresh(detection)
-
     db.close()
 
-
     return {
-
-        "message": "Detection saved",
-
-        "id": detection.id
-
+        "id": detection.id,
+        "latitude": detection.latitude,
+        "longitude": detection.longitude,
+        "probability": detection.probability,
+        "status": detection.status
     }
 
 
+# ---------------- VER DETECCIONES ----------------
 
-# -----------------------------
-# VER TODAS LAS DETECCIONES
-# -----------------------------
-
-@app.get("/detections")
+@app.get("/detections", response_model=list[DetectionOut])
 def get_detections():
-
     db = SessionLocal()
-
-    detections = db.query(Detection).all()
-
+    data = db.query(Detection).all()
     db.close()
+    return data
 
 
-    return detections
-
-
-
-# -----------------------------
-# CONFIRMAR ALERTA
-# -----------------------------
+# ---------------- CONFIRMAR ----------------
 
 @app.post("/confirm")
 def confirm(data: ConfirmData):
-
     db = SessionLocal()
 
+    detection = db.query(Detection).filter(Detection.id == data.id).first()
 
-    detection = db.query(Detection).filter(
-        Detection.id == data.id
-    ).first()
-
-
-
-    if detection is None:
-
+    if not detection:
         db.close()
-
-        return {
-            "error": "Detection not found"
-        }
-
-
+        return {"error": "Detection not found"}
 
     detection.status = "confirmed"
-
     detection.confirmed_by = data.confirmed_by
 
-
-
     db.commit()
-
     db.close()
 
+    return {"message": "Detection confirmed"}
 
 
-    return {
-
-        "message": "Detection confirmed"
-
-    }
-
-
-
-# -----------------------------
-# FALSA ALARMA
-# -----------------------------
+# ---------------- FALSA ALARMA ----------------
 
 @app.post("/false-alarm")
 def false_alarm(data: ConfirmData):
-
     db = SessionLocal()
 
+    detection = db.query(Detection).filter(Detection.id == data.id).first()
 
-
-    detection = db.query(Detection).filter(
-        Detection.id == data.id
-    ).first()
-
-
-
-    if detection is None:
-
+    if not detection:
         db.close()
-
-        return {
-
-            "error": "Detection not found"
-
-        }
-
-
+        return {"error": "Detection not found"}
 
     detection.status = "false_alarm"
-
     detection.confirmed_by = data.confirmed_by
 
-
-
     db.commit()
-
     db.close()
 
+    return {"message": "False alarm saved"}
 
 
-    return {
-
-        "message": "False alarm saved"
-
-    }
-
-
-
-# -----------------------------
-# ALERTAS PENDIENTES
-# -----------------------------
+# ---------------- ALERTAS PENDIENTES ----------------
 
 @app.get("/alerts")
 def alerts():
-
     db = SessionLocal()
-
-
-
-    alerts = db.query(Detection).filter(
-        Detection.status == "pending"
-    ).all()
-
-
-
+    data = db.query(Detection).filter(Detection.status == "pending").all()
     db.close()
+    return data
 
 
-
-    return alerts
-
-
-
-
-# -----------------------------
-# MISIONES CONFIRMADAS
-# -----------------------------
+# ---------------- MISIONES ----------------
 
 @app.get("/missions")
 def missions():
-
     db = SessionLocal()
-
-
-
-    missions = db.query(Detection).filter(
-        Detection.status == "confirmed"
-    ).all()
-
-
-
+    data = db.query(Detection).filter(Detection.status == "confirmed").all()
     db.close()
-
-
-
-    return missions
-
+    return data
